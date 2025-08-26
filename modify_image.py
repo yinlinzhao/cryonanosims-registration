@@ -2,6 +2,7 @@ import cv2
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.backend_bases import MouseButton
+import argparse
 
 # blur(img, blur_intensity)
 # Input: image array, int blur intensity
@@ -90,10 +91,6 @@ def show_image(name, image, shape_by_height=True):
 #
 # Displays and returns an image over another using opencv and matplotlib
 def overlay_images(overlay, background, shift, alpha):
-    # translation_matrix = np.float32([[shift[0], 0, 0],
-    #                       [0, shift[1], 0]])
-    # new_overlay = cv2.warpAffine(overlay, translation_matrix, (background.shape[1], background.shape[0]))
-
     # Desired transparency level (0 to 1)
     desired_alpha = alpha
     # Split overlay into channels
@@ -118,7 +115,6 @@ def overlay_images(overlay, background, shift, alpha):
     plt.imshow(background)
     plt.show()
     return background
-    #show_image('overlapping images', background)
 
 # show_histogram(img)
 # Input: image array
@@ -158,13 +154,6 @@ def create_window(map_img, lam_img):
                 plt.show()
 
                 print(f'axis2 pixel coords {event.xdata} {event.ydata}')
-        # if event.button is MouseButton.RIGHT:
-        #     print('disconnecting callback')
-        #     print("map points: ", map_points)
-        #     print("lamellae points: ", lam_points)
-        #     plt.disconnect(click_id)
-        #
-        #     plt.suptitle("close this window")
 
     def on_press(event):
         print("you pressed: ", event.key)
@@ -189,3 +178,28 @@ def create_window(map_img, lam_img):
 
     plt.show()
     return (map_points, lam_points)
+
+def make_parser():
+    #initialize parser
+    parser = argparse.ArgumentParser()
+
+    #positional arguments:
+    parser.add_argument("SearchMap", help="path to Search Map data")
+    parser.add_argument("NanoSIMS", help="path to NanoSIMS data")
+    parser.add_argument("Tomogram", help="path to tomogram data")
+    parser.add_argument("Output", help="path to output directory")
+
+    #optional arguments:
+    parser.add_argument("--select_region", help="Manually restrict template match area", action="store_true")
+    parser.add_argument("--show_steps", help="Show results of intermediate steps in the code", action="store_true")
+    parser.add_argument("--blur", help="Apply a blurring effect to the tomogram", action="store_true")
+    parser.add_argument("--flip_vertical", help="vertically flip the Search Map", action="store_true")
+
+    parser.add_argument("--canny_threshold_max", help="max threshold value for canny edge isolation", type=int)
+    parser.add_argument("--canny_threshold_min", help="min threshold value for canny edge isolation", type=int)
+    parser.add_argument("--searchmap_blur_intensity", help="intensity of blurring effect placed on search map", type=int)
+    parser.add_argument("--kernel", help="kernel value", type=int)
+    parser.add_argument("--border_size", help="this value is divided by image width to determine the size of a padded border", type=int)
+    parser.add_argument("--lamellae_blur_intensity", help="intensity of blurring placed on tomogram", type=int)
+
+    return parser

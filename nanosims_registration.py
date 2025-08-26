@@ -27,13 +27,6 @@ def runMatchTemplate(template_img, base_img, matchType=cv2.TM_CCORR):
 # by this scale factor, running runMatchTemplate() on these images and saving the function returns, then
 # returns the largest correlation score and location.
 def multiscale_template_match(base_img, template_img, steps=20, range=(0.1, 1.0)):
-    #resize TEM image
-    #declare these just for now
-    #
-    # #initial center and variations in height
-    # center = base_img.shape[0]
-    # #center = NanoSIMS_size[1]
-    # add_height = int(base_img.shape[0]) - 1
     max_vals = []
     max_intervals = []
     max_locs = []
@@ -81,9 +74,6 @@ def multiscale_cross_correlation(TEM_path, NanoSIMS_path, flip_vertical=False, c
     NanoSIMS_img = (NanoSIMS_img * 255).clip(0, 255).astype(np.uint8)
     TEM_img = (TEM_img * 255).clip(0, 255).astype(np.uint8)
 
-    # print("NanoSIMS value range:", (np.min(NanoSIMS_img), np.max(NanoSIMS_img)))
-    # print("TEM value range:", (np.min(TEM_img), np.max(TEM_img)))
-
     # ISOLATE EDGES---------------
     TEM_edge = mod.isolate_edge_canny(TEM_img, blur_intensity, canny_threshold_min, canny_threshold_max, kernel)
     NanoSIMS_edge = mod.isolate_edge_canny(NanoSIMS_img, blur_intensity, canny_threshold_min, canny_threshold_max, kernel)
@@ -91,7 +81,6 @@ def multiscale_cross_correlation(TEM_path, NanoSIMS_path, flip_vertical=False, c
     # find contours for each image to further reduce noise
     TEM_edge = cv2.adaptiveThreshold(TEM_edge, 10, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY_INV, 3, 50)
     contours, hierarchy = cv2.findContours(TEM_edge, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
-    #cv2.drawContours(TEM_edge, contours, -1, (255,255,255), 1)
     for cnt in contours:
         x,y,w,h = cv2.boundingRect(cnt)
         if(w/h > 0.5):
@@ -99,7 +88,6 @@ def multiscale_cross_correlation(TEM_path, NanoSIMS_path, flip_vertical=False, c
 
     NanoSIMS_edge = cv2.adaptiveThreshold(NanoSIMS_edge, 10, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY_INV, 3, 50)
     contours2, hierarchy2 = cv2.findContours(NanoSIMS_edge, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
-    #cv2.drawContours(NanoSIMS_edge, contours2, -1, (255,255,255), 2)
     for cnt in contours2:
         x,y,w,h = cv2.boundingRect(cnt)
         if(w/h > 0.5):
@@ -122,7 +110,6 @@ def multiscale_cross_correlation(TEM_path, NanoSIMS_path, flip_vertical=False, c
         restricted_region = open_napari.select_roi_in_image(NanoSIMS_edge)
         rv = open_napari.get_roi_values_from_selection(restricted_region, NanoSIMS_edge)
         restricted_NanoSIMS = open_napari.create_roi(NanoSIMS_edge, rv[2][1], rv[2][0], rv[0], rv[1])
-        # mod.show_image("roi", restricted_NanoSIMS)
 
     border_height = int(NanoSIMS_size[1]/border_size)
     border_width = int(NanoSIMS_size[0]/border_size)
@@ -161,12 +148,6 @@ def multiscale_cross_correlation(TEM_path, NanoSIMS_path, flip_vertical=False, c
         mod.show_image('Matched Area - with padding', padded_NanoSIMS)
         cv2.waitKey(0)
 
-    #OVERLAY IMAGES--------------------
-    # background = cv2.copyMakeBorder(background, int(NanoSIMS_size[1]/border_size), int(NanoSIMS_size[1]/border_size),
-    #                                 int(NanoSIMS_size[0]/border_size), int(NanoSIMS_size[0]/border_size),
-    #                                 cv2.BORDER_CONSTANT, value=[0, 0, 0])
-
-    if show_steps:
         overlay = cv2.imread(TEM_path, cv2.IMREAD_COLOR_BGR)  # queryImage
         if flip_vertical:
             overlay = cv2.flip(overlay, 0)
@@ -177,10 +158,6 @@ def multiscale_cross_correlation(TEM_path, NanoSIMS_path, flip_vertical=False, c
 
         image_stack = [new_overlay, background]
         open_napari.overlay_images_napari(image_stack)
-
-        # mod.overlay_images(overlay, background, rough_translate, 1.0)
-        # print("translation:", rough_translate)
-        # cv2.waitKey(0)
 
     return (rough_translate, TEM_re_dimension, (border_height, border_width), translation_matrix)
 

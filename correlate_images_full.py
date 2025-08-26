@@ -7,13 +7,60 @@ import nanosims_registration as nano_reg
 import fourier_display
 import cv2
 import numpy as np
-import sys
-# IN_DIR = sys.argv[1]
-#
-# parser = argparse.ArgumentParser()
-# parser.add_argument("-o", "--Output", help = "Show Output")
-#
+
+###---------------------------- COMMAND PROMPT INTERFACE ----------------------------###
+##----- COMMENT OUT THIS SECTION IF YOU WANT TO EDIT VALUES FROM PYTHON DIRECTLY -----##
+# parser = mod.make_parser()
 # args = parser.parse_args()
+#
+# NanoSIMS_path = args.NanoSIMS
+# TEM_path = args.SearchMap
+# lamellae_path = args.Tomogram
+# output_path = args.Output
+#
+# flip_vertical = False
+# if args.flip_vertical:
+#     flip_vertical = True
+#
+# show_steps = False
+# if args.show_steps:
+#     flip_vertical = True
+#
+# select_region = False
+# if args.select_region:
+#     select_region = True
+#
+# blur = False
+# if args.blur:
+#     blur = True
+#
+# canny_threshold_max = 50
+# if args.canny_threshold_max:
+#     canny_threshold_max = args.canny_threshold_max
+#
+# canny_threshold_min = 40
+# if args.canny_threshold_min:
+#     canny_threshold_min = args.canny_threshold_min
+#
+# searchmap_blur_intensity = 9
+# if args.searchmap_blur_intensity:
+#     searchmap_blur_intensity = args.search_blur_intensity
+#
+# kernel = 0
+# if args.kernel:
+#     kernel = args.kernel
+#
+# border_size = 50
+# if args.border_size:
+#     border_size = args.border_size
+#
+# lamellae_blur_intensity = 11
+# if args.lamellae_blur_intensity:
+#     lamellae_blur_intensity = args.lamellae_blur_intensity
+
+###--------------------------- END COMMAND PROMPT SECTION ---------------------------###
+
+###--------- CONSTANTS (UNCOMMENT THIS SECTION TO RUN DIRECTLY FROM PYTHON) ---------###
 
 file_name = 'C:/Users/ailee/Documents/coding/20250626_Lovric_Correlation/images/test_results/lovric_temp'
 NanoSIMS_path = 'images/lovric2_Na.tif'
@@ -30,12 +77,16 @@ border_size = 50
 
 blur = False
 lamellae_blur_intensity = 11
+
+###----------------------------------- END SECTION -----------------------------------###
+
+file_name = 'C:/Users/ailee/Documents/coding/20250626_Lovric_Correlation/images/test_results/lovric_temp'
+
 identity_matrix = np.float32([
     [1, 0, 0],
     [0, 1, 0]
 ])
 
-########################################################
 #run both programs
 multiscale_translation = nano_reg.multiscale_cross_correlation(TEM_path, NanoSIMS_path, flip_vertical=flip_vertical, border_size=border_size, select_region=True)
 lamellae_transform = nano_reg.highres_correlation(lamellae_path, TEM_path, flip_vertical=flip_vertical)
@@ -66,8 +117,6 @@ resized_lamellae = cv2.resize(lamellae_transform[0], multiscale_translation[1], 
 resized_TEM = cv2.resize(TEM_img, multiscale_translation[1], interpolation=cv2.INTER_CUBIC)
 
 # Create translated versions of lamellae and TEM data
-# lamellae_to_NanoSIMS = cv2.warpAffine(resized_lamellae, TEM_translation, (nanoSIMS_width, nanoSIMS_height))
-# TEM_to_NanoSIMS = cv2.warpAffine(resized_TEM, TEM_translation, (nanoSIMS_width, nanoSIMS_height))
 lamellae_to_NanoSIMS = cv2.warpAffine(resized_lamellae, TEM_translation, (nanoSIMS_width, nanoSIMS_height))
 TEM_to_NanoSIMS = cv2.warpAffine(resized_TEM, TEM_translation, (nanoSIMS_width, nanoSIMS_height))
 
@@ -79,18 +128,13 @@ fourier_display.display_fourier_compare([
 img_list = [lamellae_to_NanoSIMS, TEM_to_NanoSIMS, NanoSIMS_img_padded]
 img_viewer_napari.overlay_images_napari(img_list)
 
+# save files
 final_overlay = mod.overlay_images(lamellae_to_NanoSIMS, NanoSIMS_img_padded, (0,0), 0.9)
 output_file_name = file_name + "_full.tif"
 cv2.imwrite(output_file_name, final_overlay)
 
 information_file_name = file_name + "_information.txt"
 with open(information_file_name, 'w') as file:
-    # Write content to the file
-    # file.write("padded border size (height): ")
-    # file.write(str(multiscale_translation[2][0]))
-    #
-    # file.write("\npadded border size (width): ")
-    # file.write(str(multiscale_translation[2][1]))
     file.write("result path:")
     file.write(information_file_name)
 
