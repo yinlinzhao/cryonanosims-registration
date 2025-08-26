@@ -59,7 +59,7 @@ def multiscale_template_match(base_img, template_img, steps=20, range=(0.1, 1.0)
 # Uses isolate_edge_canny() to get the edge isolation and selectively draws contours over the edges to further reduce noise.
 # Pads out the borders of the NanoSIMS edge image and runs multiscale_template_match() on it and the TEM edge, saving the
 # returned value and visualizing the results for optional display
-def multiscale_cross_correlation(TEM_path, NanoSIMS_path, flip_vertical=False, canny_threshold_max=50, canny_threshold_min=40, blur_intensity=9, kernel=0, border_size=20, select_region=True, show_steps=False):
+def multiscale_cross_correlation(TEM_path, NanoSIMS_path, flip_vertical=False, canny_threshold_max=50, canny_threshold_min=40, blur_intensity=9, kernel=0, border_size=20, select_region=False, show_steps=False):
     # LOAD IMAGES, FLIP--------------
     TEM_img = cv2.imread(TEM_path, cv2.IMREAD_GRAYSCALE)  # queryImage
     NanoSIMS_img = cv2.imread(NanoSIMS_path, cv2.IMREAD_GRAYSCALE)  # trainImage
@@ -103,7 +103,7 @@ def multiscale_cross_correlation(TEM_path, NanoSIMS_path, flip_vertical=False, c
     # find size of NanoSIMS image
     NanoSIMS_size = (NanoSIMS_edge.shape[1], NanoSIMS_edge.shape[0]) #width, height
     restricted_NanoSIMS = NanoSIMS_edge
-    rv = (0,0)
+    rv = [[0,0],[0,0],[0,0],[0,0]]
 
     if select_region:
         # restrict region to search in

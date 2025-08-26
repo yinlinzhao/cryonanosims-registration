@@ -187,7 +187,6 @@ def make_parser():
     parser.add_argument("SearchMap", help="path to Search Map data")
     parser.add_argument("NanoSIMS", help="path to NanoSIMS data")
     parser.add_argument("Tomogram", help="path to tomogram data")
-    parser.add_argument("Output", help="path to output directory")
 
     #optional arguments:
     parser.add_argument("--select_region", help="Manually restrict template match area", action="store_true")
@@ -201,5 +200,7 @@ def make_parser():
     parser.add_argument("--kernel", help="kernel value", type=int)
     parser.add_argument("--border_size", help="this value is divided by image width to determine the size of a padded border", type=int)
     parser.add_argument("--lamellae_blur_intensity", help="intensity of blurring placed on tomogram", type=int)
+    parser.add_argument("--file_name", help="name of files in output directory")
+    parser.add_argument("--output_path", help="path to output directory")
 
     return parser

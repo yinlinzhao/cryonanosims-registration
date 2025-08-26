@@ -7,6 +7,7 @@ import nanosims_registration as nano_reg
 import fourier_display
 import cv2
 import numpy as np
+import os
 
 ###---------------------------- COMMAND PROMPT INTERFACE ----------------------------###
 ##----- COMMENT OUT THIS SECTION IF YOU WANT TO EDIT VALUES FROM PYTHON DIRECTLY -----##
@@ -16,7 +17,14 @@ import numpy as np
 # NanoSIMS_path = args.NanoSIMS
 # TEM_path = args.SearchMap
 # lamellae_path = args.Tomogram
-# output_path = args.Output
+#
+# output_path = "nanosims_registration_results"
+# if args.output_path:
+#     output_path = args.output_path
+#
+# file_name = "result"
+# if args.file_name:
+#     file_name = args.file_name
 #
 # flip_vertical = False
 # if args.flip_vertical:
@@ -62,33 +70,48 @@ import numpy as np
 
 ###--------- CONSTANTS (UNCOMMENT THIS SECTION TO RUN DIRECTLY FROM PYTHON) ---------###
 
-file_name = 'C:/Users/ailee/Documents/coding/20250626_Lovric_Correlation/images/test_results/lovric_temp'
+# file_name = 'C:/Users/ailee/Documents/coding/20250626_Lovric_Correlation/images/test_results/lovric_temp'
+file_name = "result"
+output_path = "nanosims_registration_results"
+
 NanoSIMS_path = 'images/lovric2_Na.tif'
 TEM_path = 'images/lovric2_TEM-3-binned-2.tif'
 lamellae_path = 'images/lamellae_lovric2_TEM-3.tif'
 flip_vertical = False
 show_steps = False
 
+#multiscale cross correlation variables
+select_region = False
 canny_threshold_max = 50
 canny_threshold_min = 40
 searchmap_blur_intensity = 9
 kernel = 0
 border_size = 50
 
+#high res tomogram correlation variables
 blur = False
 lamellae_blur_intensity = 11
 
 ###----------------------------------- END SECTION -----------------------------------###
-
-file_name = 'C:/Users/ailee/Documents/coding/20250626_Lovric_Correlation/images/test_results/lovric_temp'
 
 identity_matrix = np.float32([
     [1, 0, 0],
     [0, 1, 0]
 ])
 
+#create output folder
+try:
+    os.mkdir(output_path)
+    print(f"Directory '{output_path}' created successfully.")
+except FileExistsError:
+    print(f"Directory '{output_path}' already exists.")
+except PermissionError:
+    print(f"Permission denied: Unable to create '{output_path}'.")
+except Exception as e:
+    print(f"An error occurred: {e}")
+
 #run both programs
-multiscale_translation = nano_reg.multiscale_cross_correlation(TEM_path, NanoSIMS_path, flip_vertical=flip_vertical, border_size=border_size, select_region=True)
+multiscale_translation = nano_reg.multiscale_cross_correlation(TEM_path, NanoSIMS_path, flip_vertical=flip_vertical, border_size=border_size, select_region=select_region)
 lamellae_transform = nano_reg.highres_correlation(lamellae_path, TEM_path, flip_vertical=flip_vertical)
 
 #Show final result
@@ -130,10 +153,11 @@ img_viewer_napari.overlay_images_napari(img_list)
 
 # save files
 final_overlay = mod.overlay_images(lamellae_to_NanoSIMS, NanoSIMS_img_padded, (0,0), 0.9)
-output_file_name = file_name + "_full.tif"
+output_file_name = output_path + "/" + file_name + ".tif"
+
 cv2.imwrite(output_file_name, final_overlay)
 
-information_file_name = file_name + "_information.txt"
+information_file_name = output_path + "/" + file_name + "_information.txt"
 with open(information_file_name, 'w') as file:
     file.write("result path:")
     file.write(information_file_name)
