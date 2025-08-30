@@ -126,7 +126,6 @@ NanoSIMS_img = cv2.imread(NanoSIMS_path, cv2.IMREAD_COLOR_RGB)
 if flip_vertical:
     TEM_img = cv2.flip((TEM_img), 0)
 
-# Add padded border to NanoSIMS image using the dimensions returned from multiscale_translation
 nanoSIMS_height, nanoSIMS_width = NanoSIMS_img.shape[:2]
 
 # Calculate transformation matrix (rigid) for lamellae and TEM
@@ -169,3 +168,4 @@ with open(information_file_name, 'w') as file:
 
     file.write("\nlamellae affine transformation matrix: ")
     file.write(str(lamellae_transform[2]))
+
