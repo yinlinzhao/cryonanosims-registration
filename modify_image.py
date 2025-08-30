@@ -2,6 +2,7 @@ import cv2
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.backend_bases import MouseButton
+import argparse
 
 # blur(img, blur_intensity)
 # Input: image array, int blur intensity
@@ -48,15 +49,21 @@ def isolate_edge_sobel(img, blur_intensity, scale=1, delta=0, ddepth=cv2.CV_16S)
 
     return grad
 
-# re_dimension(image, target_height)
-# Input: image array, int target image height
+# re_dimension(image, target_dimension)
+# Input: image array, int target image dimension, boolean use_width
 # Returns: (int adjusted height, int adjusted width)
 #
 # Calculates the new dimension of the image using the new image height
-def re_dimension(image, target_height):
+def re_dimension(image, target_dimension, use_width=False):
     image_size_og = (image.shape[1], image.shape[0])
     image_wh_proportion = image_size_og[0] / image_size_og[1]
-    TEM_new_dimension = (int(target_height*image_wh_proportion), int(target_height))
+
+    TEM_new_dimension = (int(target_dimension*image_wh_proportion), int(target_dimension))
+
+    if use_width:
+        image_hw_proportion = image_size_og[1]/image_size_og[0]
+        TEM_new_dimension = (int(target_dimension), int(target_dimension*image_hw_proportion))
+
     if TEM_new_dimension[0] <= 0:
         TEM_new_dimension = (1, TEM_new_dimension[1])
     if TEM_new_dimension[1] <= 0:
@@ -90,10 +97,6 @@ def show_image(name, image, shape_by_height=True):
 #
 # Displays and returns an image over another using opencv and matplotlib
 def overlay_images(overlay, background, shift, alpha):
-    # translation_matrix = np.float32([[shift[0], 0, 0],
-    #                       [0, shift[1], 0]])
-    # new_overlay = cv2.warpAffine(overlay, translation_matrix, (background.shape[1], background.shape[0]))
-
     # Desired transparency level (0 to 1)
     desired_alpha = alpha
     # Split overlay into channels
@@ -118,7 +121,6 @@ def overlay_images(overlay, background, shift, alpha):
     plt.imshow(background)
     plt.show()
     return background
-    #show_image('overlapping images', background)
 
 # show_histogram(img)
 # Input: image array
@@ -138,6 +140,11 @@ def show_histogram(img):
 
     return cdf
 
+# create_window(map_img, lam_img)
+# Input: search map image array, tomogram image array
+# Returns: ((array of coordinates on search map), (array of coordinates on tomogram))
+#
+# Displays matplotlib plots of the Search Map and tomogram images and stores the points selected in two arrays
 def create_window(map_img, lam_img):
     #OPEN POINT SELECTION WINDOW
     #these set up what happens upon these mouse events
@@ -158,19 +165,11 @@ def create_window(map_img, lam_img):
                 plt.show()
 
                 print(f'axis2 pixel coords {event.xdata} {event.ydata}')
-        # if event.button is MouseButton.RIGHT:
-        #     print('disconnecting callback')
-        #     print("map points: ", map_points)
-        #     print("lamellae points: ", lam_points)
-        #     plt.disconnect(click_id)
-        #
-        #     plt.suptitle("close this window")
 
     def on_press(event):
         print("you pressed: ", event.key)
         if event.key == 'enter':
-            print("hi you pressed enter")
-            print("okay connected to onclick")
+            print("Select corresponding points on the plots.")
             plt.suptitle("select corresponding points, close out of window when done")
             plt.show()
             click_id = plt.connect('button_press_event', on_click)
@@ -178,9 +177,11 @@ def create_window(map_img, lam_img):
             plt.disconnect(key_id)
 
     ax1 = plt.subplot(1,2,1)
+    plt.title("Search Map")
     plt.imshow(map_img)
 
     ax2 = plt.subplot(1,2,2)
+    plt.title("Tomogram")
     plt.imshow(lam_img)
 
     key_id = plt.connect('key_press_event', on_press)
@@ -188,4 +189,39 @@ def create_window(map_img, lam_img):
     plt.suptitle("use magnifying glass to select region, then press enter")
 
     plt.show()
+
+    if len(map_points) != len(lam_points):
+        print("Error: Number of points selected in each image do not match.")
+
     return (map_points, lam_points)
+
+# make_parser()
+# Input: None
+# Returns: argparse parser
+#
+# Makes input parser for arguments in order to run program through command line
+def make_parser():
+    #initialize parser
+    parser = argparse.ArgumentParser()
+
+    #positional arguments:
+    parser.add_argument("SearchMap", help="path to Search Map data")
+    parser.add_argument("NanoSIMS", help="path to NanoSIMS data")
+    parser.add_argument("Tomogram", help="path to tomogram data")
+
+    #optional arguments:
+    parser.add_argument("--select_region", help="Manually restrict template match area", action="store_true")
+    parser.add_argument("--show_steps", help="Show results of intermediate steps in the code", action="store_true")
+    parser.add_argument("--blur_lamellae", help="Apply a blurring effect to the tomogram", action="store_true")
+    parser.add_argument("--flip_vertical", help="vertically flip the Search Map", action="store_true")
+
+    parser.add_argument("--canny_threshold_max", help="max threshold value for canny edge isolation", type=int)
+    parser.add_argument("--canny_threshold_min", help="min threshold value for canny edge isolation", type=int)
+    parser.add_argument("--searchmap_blur_intensity", help="intensity of blurring effect placed on search map", type=int)
+    parser.add_argument("--kernel", help="kernel value", type=int)
+    parser.add_argument("--border_size", help="this value is divided by image width to determine the size of a padded border", type=int)
+    parser.add_argument("--file_name", help="name of files in output directory")
+    parser.add_argument("--output_path", help="path to output directory")
+    parser.add_argument("--template_match_steps", help="Number of increments of size to conduct template matching on", type=int)
+
+    return parser
