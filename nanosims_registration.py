@@ -27,19 +27,15 @@ def runMatchTemplate(template_img, base_img, matchType=cv2.TM_CCORR):
 # by this scale factor, running runMatchTemplate() on these images and saving the function returns, then
 # returns the largest correlation score and location.
 def multiscale_template_match(base_img, template_img, steps=20, range=(0.1, 1.0)):
-    #resize TEM image
-    #declare these just for now
-    #
-    # #initial center and variations in height
-    # center = base_img.shape[0]
-    # #center = NanoSIMS_size[1]
-    # add_height = int(base_img.shape[0]) - 1
     max_vals = []
     max_intervals = []
     max_locs = []
 
     for scale in np.linspace(range[0], range[1], steps):
         template_re_dimension = mod.re_dimension(template_img, base_img.shape[0] * scale)
+        if(template_re_dimension[0] > base_img.shape[1] or template_re_dimension[1] > base_img.shape[0]):
+            template_re_dimension = mod.re_dimension(template_img, base_img.shape[1] * scale, use_width=True)
+
         template_resized = cv2.resize(template_img, template_re_dimension, interpolation=cv2.INTER_CUBIC)
 
         max_val, max_l = runMatchTemplate(template_resized, base_img)
@@ -66,7 +62,9 @@ def multiscale_template_match(base_img, template_img, steps=20, range=(0.1, 1.0)
 # Uses isolate_edge_canny() to get the edge isolation and selectively draws contours over the edges to further reduce noise.
 # Pads out the borders of the NanoSIMS edge image and runs multiscale_template_match() on it and the TEM edge, saving the
 # returned value and visualizing the results for optional display
-def multiscale_cross_correlation(TEM_path, NanoSIMS_path, flip_vertical=False, canny_threshold_max=50, canny_threshold_min=40, blur_intensity=9, kernel=0, border_size=20, select_region=True, show_steps=False):
+def multiscale_cross_correlation(TEM_path, NanoSIMS_path, flip_vertical=False, canny_threshold_max=50, canny_threshold_min=40,
+                                 blur_intensity=9, kernel=0, border_size=20, select_region=False, show_steps=False,
+                                 template_match_steps=20, template_match_scale_range = (0.1, 1.0)):
     # LOAD IMAGES, FLIP--------------
     TEM_img = cv2.imread(TEM_path, cv2.IMREAD_GRAYSCALE)  # queryImage
     NanoSIMS_img = cv2.imread(NanoSIMS_path, cv2.IMREAD_GRAYSCALE)  # trainImage
@@ -81,9 +79,6 @@ def multiscale_cross_correlation(TEM_path, NanoSIMS_path, flip_vertical=False, c
     NanoSIMS_img = (NanoSIMS_img * 255).clip(0, 255).astype(np.uint8)
     TEM_img = (TEM_img * 255).clip(0, 255).astype(np.uint8)
 
-    # print("NanoSIMS value range:", (np.min(NanoSIMS_img), np.max(NanoSIMS_img)))
-    # print("TEM value range:", (np.min(TEM_img), np.max(TEM_img)))
-
     # ISOLATE EDGES---------------
     TEM_edge = mod.isolate_edge_canny(TEM_img, blur_intensity, canny_threshold_min, canny_threshold_max, kernel)
     NanoSIMS_edge = mod.isolate_edge_canny(NanoSIMS_img, blur_intensity, canny_threshold_min, canny_threshold_max, kernel)
@@ -91,19 +86,19 @@ def multiscale_cross_correlation(TEM_path, NanoSIMS_path, flip_vertical=False, c
     # find contours for each image to further reduce noise
     TEM_edge = cv2.adaptiveThreshold(TEM_edge, 10, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY_INV, 3, 50)
     contours, hierarchy = cv2.findContours(TEM_edge, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
-    #cv2.drawContours(TEM_edge, contours, -1, (255,255,255), 1)
-    for cnt in contours:
-        x,y,w,h = cv2.boundingRect(cnt)
-        if(w/h > 0.5):
-            cv2.drawContours(TEM_edge, [cnt], -1, (255,255,255), 2)
+    cv2.drawContours(TEM_edge, contours, -1, (255,255,255), 2)
+    # for cnt in contours:
+    #     x,y,w,h = cv2.boundingRect(cnt)
+    #     if(w/h > 0.5):
+    #         cv2.drawContours(TEM_edge, [cnt], -1, (255,255,255), 2)
 
     NanoSIMS_edge = cv2.adaptiveThreshold(NanoSIMS_edge, 10, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY_INV, 3, 50)
     contours2, hierarchy2 = cv2.findContours(NanoSIMS_edge, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
-    #cv2.drawContours(NanoSIMS_edge, contours2, -1, (255,255,255), 2)
-    for cnt in contours2:
-        x,y,w,h = cv2.boundingRect(cnt)
-        if(w/h > 0.5):
-            cv2.drawContours(NanoSIMS_edge, [cnt], -1, (255,255,255), 2)
+    cv2.drawContours(NanoSIMS_edge, contours2, -1, (255,255,255), 2)
+    # for cnt in contours2:
+    #     x,y,w,h = cv2.boundingRect(cnt)
+    #     if(w/h > 0.5):
+    #         cv2.drawContours(NanoSIMS_edge, [cnt], -1, (255,255,255), 2)
 
     if show_steps:
         # SHOW IMAGE OUTLINES
@@ -115,14 +110,13 @@ def multiscale_cross_correlation(TEM_path, NanoSIMS_path, flip_vertical=False, c
     # find size of NanoSIMS image
     NanoSIMS_size = (NanoSIMS_edge.shape[1], NanoSIMS_edge.shape[0]) #width, height
     restricted_NanoSIMS = NanoSIMS_edge
-    rv = (0,0)
+    rv = [[0,0],[0,0],[0,0],[0,0]]
 
     if select_region:
         # restrict region to search in
-        restricted_region = open_napari.select_roi_in_image(NanoSIMS_edge)
+        restricted_region = open_napari.select_roi_in_image(NanoSIMS_img)
         rv = open_napari.get_roi_values_from_selection(restricted_region, NanoSIMS_edge)
         restricted_NanoSIMS = open_napari.create_roi(NanoSIMS_edge, rv[2][1], rv[2][0], rv[0], rv[1])
-        # mod.show_image("roi", restricted_NanoSIMS)
 
     border_height = int(NanoSIMS_size[1]/border_size)
     border_width = int(NanoSIMS_size[0]/border_size)
@@ -132,7 +126,7 @@ def multiscale_cross_correlation(TEM_path, NanoSIMS_path, flip_vertical=False, c
                                                               cv2.BORDER_CONSTANT, value=[0,0,0])
 
     # run template matching
-    match_results = multiscale_template_match(padded_NanoSIMS, TEM_edge)
+    match_results = multiscale_template_match(padded_NanoSIMS, TEM_edge, steps=template_match_steps, range=template_match_scale_range)
 
     TEM_re_dimension = match_results[1]
     max_loc = match_results[0] #(x,y) top left coordinates with padded sides and restricted
@@ -161,12 +155,6 @@ def multiscale_cross_correlation(TEM_path, NanoSIMS_path, flip_vertical=False, c
         mod.show_image('Matched Area - with padding', padded_NanoSIMS)
         cv2.waitKey(0)
 
-    #OVERLAY IMAGES--------------------
-    # background = cv2.copyMakeBorder(background, int(NanoSIMS_size[1]/border_size), int(NanoSIMS_size[1]/border_size),
-    #                                 int(NanoSIMS_size[0]/border_size), int(NanoSIMS_size[0]/border_size),
-    #                                 cv2.BORDER_CONSTANT, value=[0, 0, 0])
-
-    if show_steps:
         overlay = cv2.imread(TEM_path, cv2.IMREAD_COLOR_BGR)  # queryImage
         if flip_vertical:
             overlay = cv2.flip(overlay, 0)
@@ -177,10 +165,6 @@ def multiscale_cross_correlation(TEM_path, NanoSIMS_path, flip_vertical=False, c
 
         image_stack = [new_overlay, background]
         open_napari.overlay_images_napari(image_stack)
-
-        # mod.overlay_images(overlay, background, rough_translate, 1.0)
-        # print("translation:", rough_translate)
-        # cv2.waitKey(0)
 
     return (rough_translate, TEM_re_dimension, (border_height, border_width), translation_matrix)
 
@@ -208,7 +192,7 @@ def histogram_normalize(img):
 # histogram_normalize() on the TEM image, opens a matplotlib setup for finding regions of interest and selecting
 # corresponding keypoints, calculates a 2D (2x3) affine matrix for the lamellae and applies the transformation.
 # Optionally visualizes the results.
-def highres_correlation(lamellae_path, SearchMap_path, flip_vertical=False, blur=False, blur_intensity=11, show_steps=False):
+def highres_correlation(lamellae_path, SearchMap_path, flip_vertical=False, blur=False, show_steps=False):
     # LOAD IMAGES, FLIP IF NEEDED
     lam_img = cv2.imread(lamellae_path, cv2.IMREAD_GRAYSCALE)  # queryImage
     map_img = cv2.imread(SearchMap_path, cv2.IMREAD_GRAYSCALE)  # trainImage
@@ -228,7 +212,7 @@ def highres_correlation(lamellae_path, SearchMap_path, flip_vertical=False, blur
 
     #apply gaussian blur to lamellae image if needed
     if blur:
-        lam_img = mod.gaussian_blur(lam_img, blur_intensity)
+        lam_img = mod.gaussian_blur(lam_img, 3)
 
     #EQUALIZE SEARCHMAP FOR VISIBILITY
     map_img = histogram_normalize(map_img)
@@ -237,58 +221,7 @@ def highres_correlation(lamellae_path, SearchMap_path, flip_vertical=False, blur
         mod.show_image('equalized histogram', map_img)
         cv2.waitKey(0)
 
-    # #OPEN POINT SELECTION WINDOW
-
-    # #these set up what happens upon these mouse events
-    # map_points = []
-    # lam_points = []
-    #
-    # def on_click(event):
-    #     if event.button is MouseButton.LEFT:
-    #         if event.inaxes == ax1:
-    #             map_points.append([event.xdata, event.ydata])
-    #             ax1.plot([event.xdata], [event.ydata], marker='*', markersize=5)
-    #             plt.show()
-    #
-    #             print(f'axis1 pixel coords {event.xdata} {event.ydata}')
-    #         elif event.inaxes == ax2:
-    #             lam_points.append([event.xdata, event.ydata])
-    #             ax2.plot([event.xdata], [event.ydata], marker='*', markersize=5)
-    #             plt.show()
-    #
-    #             print(f'axis2 pixel coords {event.xdata} {event.ydata}')
-    #
-    #     # if event.button is MouseButton.RIGHT:
-    #     #     print('disconnecting callback')
-    #     #     print("map points: ", map_points)
-    #     #     print("lamellae points: ", lam_points)
-    #     #     plt.disconnect(click_id)
-    #     #
-    #     #     plt.suptitle("close this window")
-    #
-    # def on_press(event):
-    #     print("you pressed: ", event.key)
-    #     if event.key == 'enter':
-    #         print("hi you pressed enter")
-    #         print("okay connected to onclick")
-    #         plt.suptitle("select corresponding points, close out of window when done")
-    #         plt.show()
-    #         click_id = plt.connect('button_press_event', on_click)
-    #         plt.show()
-    #         plt.disconnect(key_id)
-    #         return click_id
-    #
-    # ax1 = plt.subplot(1,2,1)
-    # plt.imshow(map_img)
-    #
-    # ax2 = plt.subplot(1,2,2)
-    # plt.imshow(lam_img)
-    #
-    # # key_id = plt.connect('key_press_event', on_press)
-    # key_id = plt.connect('button_press_event', on_click)
-    # plt.suptitle("use magnifying glass to select region, then press enter")
-    #
-    # plt.show()
+    # create window for selecting points
     window_results = mod.create_window(map_img, lam_img)
     map_points = window_results[0]
     lam_points = window_results[1]
